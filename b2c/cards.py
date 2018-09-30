@@ -15,7 +15,7 @@ class Box(object):
             for i in range(16):
                 buildings.append(Building(kind, None))
         for kind in [kinds.office, kinds.house]:
-            for i in range(16):
+            for i in range(20):
                 buildings.append(Building(kind, None))
         for subtype in TAVERN_LIST:
             for i in range(5):
