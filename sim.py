@@ -1,10 +1,20 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python
 
 from __future__ import print_function
 from datetime import datetime
 import random
 import sys
 from b2c import *
+
+def print_status(board, score):
+    print("\nbest board ({}):".format(score))
+    print("  shops: {} pts".format(score_shops(board)))
+    print("  factories: {} pts".format(score_factories(board)))
+    print("  taverns: {} pts".format(score_taverns(board)))
+    print("  offices: {} pts".format(score_offices(board)))
+    print("  parks: {} pts".format(score_parks(board)))
+    print("  houses: {} pts".format(score_houses(board)))
+    print(board_str(board))
 
 if len(sys.argv) > 1:
     iterations = int(sys.argv[1])
@@ -25,9 +35,6 @@ for i in range(iterations):
     if score > max_score:
         max_score = score
         max_board = board
-        print("\nbest board ({}):".format(max_score))
-        print(board_str(max_board))
+        print_status(board, score)
 
-
-print("\n\nfinal best board ({}):".format(max_score))
-print(board_str(max_board))
+print_status(max_board, max_score)

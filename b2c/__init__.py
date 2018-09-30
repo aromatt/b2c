@@ -9,7 +9,7 @@ ROWS = 4
 COLS = 4
 
 TAVERN_SCORING = [1, 4, 9, 17]
-OFFICE_SCORING = [1, 3, 6, 10, 15, 21]
+OFFICE_SCORING = [1, 2, 3, 4, 5, 6] # deltas
 SHOP_SCORING = [2, 5, 10, 16]
 PARK_SCORING = [2, 8, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25]
 
@@ -161,13 +161,8 @@ def score_taverns(board):
 
 def score_offices(board):
     total = 0
-    count = 0
-    for pb in get_each(board, kinds.office):
-        if count < len(TAVERN_SCORING) - 1:
-            total += TAVERN_SCORING[count]
-            count += 1
-        else:
-            total += 1
+    for i, pb in enumerate(get_each(board, kinds.office)):
+        total += OFFICE_SCORING[i % len(OFFICE_SCORING)]
         if is_next_to_kind(board, pb.coord, kinds.tavern):
             total += 1
     return total
