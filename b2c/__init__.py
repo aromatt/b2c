@@ -2,32 +2,11 @@ from __future__ import print_function
 import random
 import copy
 from collections import namedtuple
+from b2c.cards import Box, taverns, KIND_LIST, TAVERN_LIST
+from b2c.types import *
 
-def name_set(*names):
-    NameSet = namedtuple('NameSet', names)
-    return NameSet(*names)
-
-Card = namedtuple('Card', 'kind subtype')
-PlacedCard = namedtuple('PlacedCard', 'card coord')
-Coord = namedtuple('Coord', 'row col')
-kinds = name_set('tavern', 'office', 'park', 'factory', 'shop', 'house')
-taverns = name_set('music', 'drink', 'food', 'sleep')
 ROWS = 4
 COLS = 4
-
-DELTA_UP = Coord(-1, 0)
-DELTA_DOWN = Coord(1, 0)
-DELTA_RIGHT = Coord(0, 1)
-DELTA_LEFT = Coord(0, -1)
-ADJACENT_DELTAS = [DELTA_UP, DELTA_DOWN, DELTA_RIGHT, DELTA_LEFT]
-
-KIND_LIST = [kinds.tavern, kinds.office, kinds.park, kinds.factory, kinds.shop, kinds.house]
-TAVERN_LIST = [
-    taverns.music,
-    taverns.drink,
-    taverns.food,
-    taverns.sleep
-]
 
 TAVERN_SCORING = [1, 4, 9, 17]
 OFFICE_SCORING = [1, 3, 6, 10, 15, 21]
@@ -35,20 +14,20 @@ SHOP_SCORING = [2, 5, 10, 16]
 PARK_SCORING = [2, 8, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25]
 
 def get_each(board, kind):
-    return [pc for row in board for pc in row if pc and pc.card.kind == kind]
+    return [pb for row in board for pb in row if pb and pb.building.kind == kind]
 
 def number_of_kind(board, kind):
     return len(get_each(board, kind))
 
 def num_unique_subtypes(board, kind):
-    return len(set(pc.card.subtype for row in board
-                   for pc in row if pc and pc.card.kind == kind))
+    return len(set(pb.building.subtype for row in board
+                   for pb in row if pb and pb.building.kind == kind))
 
 def num_unique_kinds(board):
-    return len(set(pc.card.kind for row in board for pc in row if pc))
+    return len(set(pb.building.kind for row in board for pb in row if pb))
 
 def neighbors(board, coord, kind=None):
-    """Returns PlacedCards"""
+    """Returns PlacedBuildings"""
     ns = []
     for delta in ADJACENT_DELTAS:
         ncoord = coord_add(coord, delta)
@@ -57,21 +36,15 @@ def neighbors(board, coord, kind=None):
         n = board_get(board, ncoord)
         if n is None:
             continue
-        if kind is None or n.card.kind == kind:
+        if kind is None or n.building.kind == kind:
             ns.append(n)
     return ns
 
-def draw_card(board):
-    kind = KIND_LIST[random.randint(0,len(KIND_LIST) - 1)]
-    if kind == kinds.tavern:
-        subtype = random.choice(TAVERN_LIST)
-    else:
-        subtype = None
-    return Card(kind, subtype)
-
-def place_card(board, coord, card):
-    pc = PlacedCard(card, coord)
-    board[coord.row][coord.col] = pc
+def place_building(board, coord, building, is_duplex=False):
+    if board[coord.row][coord.col] is not None:
+        raise Exception("Tried to place a building on an occupied space")
+    pb = PlacedBuilding(building, coord, is_duplex)
+    board[coord.row][coord.col] = pb
 
 def empty_board():
     board = []
@@ -81,17 +54,55 @@ def empty_board():
             board[row].append(None)
     return board
 
-def build_board():
-    board = empty_board()
+def duplex_neighbor_available(coord, duplex):
+    n_coord = coord_add(coord, duplex)
+    if n_coord and board[coord.row][coord.col] is None:
+        return True
+    return False
+
+def get_empty_spaces(board):
+    spaces = []
     for row in range(0, ROWS):
         for col in range(0, COLS):
-            place_card(board, Coord(row, col), draw_card(board))
+            coord = Coord(row, col)
+            if board_get(board, coord) is None:
+                spaces.append(coord)
+    return spaces
+
+def play_building_round(board, box, num_cards):
+    empty_spaces = get_empty_spaces(board)
+    for i in range(0, num_cards):
+        building = box.draw_building()
+        coord = random.choice(empty_spaces)
+        empty_spaces.remove(coord)
+        place_building(board, coord, building)
+
+def play_duplex_round(board, box, num_cards):
+    empty_spaces = get_empty_spaces(board)
+    for i in range(0, num_cards):
+        duplex = box.draw_duplex()
+        while True:
+            a_coord = random.choice(empty_spaces)
+            b_coord = coord_add(a_coord, duplex.delta)
+            if b_coord in empty_spaces:
+                break
+        empty_spaces.remove(a_coord)
+        empty_spaces.remove(b_coord)
+        place_building(board, a_coord, duplex.a, True)
+        place_building(board, b_coord, duplex.b, True)
+
+def build_board():
+    board = empty_board()
+    box = Box()
+    play_duplex_round(board, box, 2)
+    play_building_round(board, box, 6)
+    play_building_round(board, box, 6)
     return board
 
 def is_next_to_kind(board, coord, kind):
     for delta in ADJACENT_DELTAS:
         n = board_neighbor(board, coord, delta)
-        if n and n.card.kind == kind:
+        if n and n.building.kind == kind:
             return True
     return False
 
@@ -113,42 +124,51 @@ def board_neighbor(board, coord, coord_delta):
     return board_get(board, n_coord)
 
 def board_get(board, coord):
-    """Returns card at given coordinates or None if it the coordinates are invalid"""
+    """Returns building at given coordinates or None if it the coordinates are invalid"""
     if coord.row > ROWS - 1 or coord.row < 0 or coord.col > COLS - 1 or coord.col < 0:
         return None
     return board[coord.row][coord.col]
 
-def card_str(card):
-    if card.kind == kinds.tavern:
-        return 't({})'.format(card.subtype)
+def placed_building_str(pb):
+    if pb is None:
+        return '    '
+    if pb.building.kind == kinds.tavern:
+        string = 't({})'.format(pb.building.subtype)
     else:
-        return card.kind
+        string =  pb.building.kind
+    if pb.is_duplex:
+        string += '*'
+    return string
 
 def board_str(board):
-    return ''.join('\n' + '    \t'.join(card_str(pc.card) if pc else '    ' for pc in row)
-                   for row in board)
+    string = '\n'
+    for row in board:
+        for pb in row:
+            string += placed_building_str(pb) + '    \t'
+        string += '\n'
+    return string
 
 def score_taverns(board):
     sets = []
-    for pc in get_each(board, kinds.tavern):
-        chosen_set = next((s for s in sets if pc.card.subtype not in s), None)
+    for pb in get_each(board, kinds.tavern):
+        chosen_set = next((s for s in sets if pb.building.subtype not in s), None)
         if chosen_set is None:
             chosen_set = set()
             sets.append(chosen_set)
-        chosen_set.add(pc.card.subtype)
+        chosen_set.add(pb.building.subtype)
     score = sum(TAVERN_SCORING[len(s) - 1] for s in sets)
     return score
 
 def score_offices(board):
     total = 0
     count = 0
-    for pc in get_each(board, kinds.office):
+    for pb in get_each(board, kinds.office):
         if count < len(TAVERN_SCORING) - 1:
             total += TAVERN_SCORING[count]
             count += 1
         else:
             total += 1
-        if is_next_to_kind(board, pc.coord, kinds.tavern):
+        if is_next_to_kind(board, pb.coord, kinds.tavern):
             total += 1
     return total
 
@@ -159,12 +179,12 @@ def score_factories(board, threshold=3):
     if num_factories == 0:
         return 0
     elif num_factories == threshold:
-        return 3
+        return num_factories * 2
     else:
         return num_factories * 4
 
 def score_houses(board):
-    num_uniques = num_unique_kinds(board)
+    num_uniques = num_unique_kinds(board) - 1 # minus 1 bc houses don't count
     total = 0
     for h in get_each(board, kinds.house):
         if not is_next_to_kind(board, h.coord, kinds.factory):
