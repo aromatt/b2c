@@ -2,8 +2,9 @@ from __future__ import print_function
 import random
 import copy
 from collections import namedtuple
-from b2c.cards import Box, taverns, KIND_LIST, TAVERN_LIST
+from b2c.box import Box
 from b2c.types import *
+from b2c.cards import kinds, taverns
 
 ROWS = 4
 COLS = 4
