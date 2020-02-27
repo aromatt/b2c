@@ -4,7 +4,7 @@ from __future__ import print_function
 from b2c import *
 
 def assert_score(expected, actual):
-    assert expected == actual, "Expected {}, got {}".format(expected, actual)
+    assert expected == actual, f'Expected {expected}, got {actual}'
 
 def test_offices():
     print('offices... ', end='')

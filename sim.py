@@ -7,13 +7,13 @@ import sys
 from b2c import *
 
 def print_status(board, score):
-    print("\nbest board ({}):".format(score))
-    print("  shops: {} pts".format(score_shops(board)))
-    print("  factories: {} pts".format(score_factories(board)))
-    print("  taverns: {} pts".format(score_taverns(board)))
-    print("  offices: {} pts".format(score_offices(board)))
-    print("  parks: {} pts".format(score_parks(board)))
-    print("  houses: {} pts".format(score_houses(board)))
+    print(f'\nbest board ({score}):')
+    print(f'  shops: {score_shops(board)} pts')
+    print(f'  factories: {score_factories(board)} pts')
+    print(f'  taverns: {score_taverns(board)} pts')
+    print(f'  offices: {score_offices(board)} pts')
+    print(f'  parks: {score_parks(board)} pts')
+    print(f'  houses: {score_houses(board)} pts')
     print(board_str(board))
 
 if len(sys.argv) > 1:
@@ -21,14 +21,14 @@ if len(sys.argv) > 1:
 else:
     iterations = 10000
 
-print("Trying {} boards".format(iterations))
+print(f'Trying {iterations} boards')
 random.seed(datetime.now())
 max_board = None
 max_score = 0
 tried_boards = set()
 for i in range(iterations):
     if i % 5000 == 0:
-        print('boards done: {}; max score: {}'.format(i, max_score))
+        print(f'boards done: {i}; max score: {max_score}')
         sys.stdout.flush()
     board = build_board()
     score = score_board(board)

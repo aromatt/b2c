@@ -134,7 +134,7 @@ def placed_building_str(pb):
     if pb is None:
         return '    '
     if pb.building.kind == kinds.tavern:
-        string = 't({})'.format(pb.building.subtype)
+        string = f't({pb.building.subtype})'
     else:
         string =  pb.building.kind
     if pb.is_duplex:
